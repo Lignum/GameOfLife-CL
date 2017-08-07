@@ -1,0 +1,11 @@
+resolver: lts-9.0
+packages:
+- '.'
+- location:
+    git: https://github.com/haskell-game/sdl2.git
+    commit: 290da856b5a54ba0da90c114a1c4d1ad157d84c2
+  extra-dep: true
+extra-deps:
+- 'OpenCL-1.0.3.4'
+flags: {}
+extra-package-dbs: []
