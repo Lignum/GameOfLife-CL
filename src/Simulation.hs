@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, RecordWildCards, ViewPatterns, ScopedTypeVariables #-}
+{-# LANGUAGE FlexibleContexts, RecordWildCards, ScopedTypeVariables #-}
 module Simulation(Simulation(..)
                 , simulation
                 , simHandleEvent
@@ -7,7 +7,8 @@ module Simulation(Simulation(..)
 import Compute
 import Graphics
 
-import Control.Monad.State.Strict
+import Control.Monad.Reader
+import Control.Monad.Reader.Class
 import Control.Monad.IO.Class
 import Control.Parallel.OpenCL.Memory
 import Control.Parallel.OpenCL.CommandQueue
@@ -68,16 +69,16 @@ simulation gc cc@ComputeContext{..} = do
   clUnloadCompiler
   pure $ Simulation gc cc w h cq cbf ckr
 
-simHandleEvent :: MonadState Simulation m => SDL.EventPayload -> m Bool
+simHandleEvent :: MonadReader Simulation m => SDL.EventPayload -> m Bool
 simHandleEvent SDL.QuitEvent = pure True 
 simHandleEvent _ = pure False
 
-simWithCells :: (MonadIO m, MonadState Simulation m) => (VS.Vector Bool -> IO a) -> m a
+simWithCells :: (MonadIO m, MonadReader Simulation m) => (VS.Vector Bool -> IO a) -> m a
 simWithCells f = do
-  bw  <- gets simBoardWidth
-  bh  <- gets simBoardHeight
-  cq  <- gets simCommandQueue
-  cbf <- gets simCellBuffer
+  bw  <- asks simBoardWidth
+  bh  <- asks simBoardHeight
+  cq  <- asks simCommandQueue
+  cbf <- asks simCellBuffer
   let size = sizeOf True * bw * bh
   x <- liftIO $ do
     (evt, ptr) <- clEnqueueMapBuffer cq cbf True [CL_MAP_READ, CL_MAP_WRITE] 0 size []
@@ -88,24 +89,24 @@ simWithCells f = do
 
   pure x
 
-simDrawCells :: (MonadIO m, MonadState Simulation m) => Int -> Int -> m ()
+simDrawCells :: (MonadIO m, MonadReader Simulation m) => Int -> Int -> m ()
 simDrawCells w h = do
-  rdr <- graphicsRenderer <$> gets simGraphicsContext
-  bw  <- gets simBoardWidth
-  bh  <- gets simBoardHeight
+  rdr <- graphicsRenderer <$> asks simGraphicsContext
+  bw  <- asks simBoardWidth
+  bh  <- asks simBoardHeight
   simWithCells $ \cls ->
     flip V.imapM_ cls $ \i c -> let (x, y) = (i `mod` bw, i `div` bw)
                                   in do if c then SDL.rendererDrawColor rdr $= SDL.V4 0 0 0 255
                                              else SDL.rendererDrawColor rdr $= SDL.V4 255 255 255 255
                                         SDL.fillRect rdr . Just $ rect (x * w) (y * h) w h
 
-simStep :: (MonadIO m, MonadState Simulation m) => m ()
+simStep :: (MonadIO m, MonadReader Simulation m) => m ()
 simStep = do
-  ckr <- gets simKernel
-  cbf <- gets simCellBuffer
-  cq  <- gets simCommandQueue
-  bw  <- gets simBoardWidth
-  bh  <- gets simBoardHeight
+  ckr <- asks simKernel
+  cbf <- asks simCellBuffer
+  cq  <- asks simCommandQueue
+  bw  <- asks simBoardWidth
+  bh  <- asks simBoardHeight
   liftIO $ do
     clSetKernelArgSto ckr 0 cbf
     clSetKernelArgSto ckr 1 (fromIntegral bw :: Word32)
@@ -114,15 +115,15 @@ simStep = do
     evt <- clEnqueueNDRangeKernel cq ckr [bw, bh] [] []
     clEnqueueWaitForEvents cq [evt]
 
-simRun :: (MonadIO m, MonadState Simulation m) => m ()
+simRun :: (MonadIO m, MonadReader Simulation m) => m ()
 simRun = do
   simStep
   simDrawCells simBoardCellWidth simBoardCellHeight
 
-simDestroy :: (MonadIO m, MonadState Simulation m) => m ()
+simDestroy :: (MonadIO m, MonadReader Simulation m) => m ()
 simDestroy = do
-  cbf <- gets simCellBuffer
-  ckr <- gets simKernel
+  cbf <- asks simCellBuffer
+  ckr <- asks simKernel
   liftIO $ do
     clReleaseMemObject cbf
     clReleaseKernel ckr

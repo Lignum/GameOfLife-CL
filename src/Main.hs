@@ -7,7 +7,7 @@ import Simulation
 
 import Control.Monad
 import Control.Monad.IO.Class
-import Control.Monad.State.Strict
+import Control.Monad.Reader
 
 import Data.Semigroup ((<>))
 import Data.Maybe
@@ -22,13 +22,13 @@ run sim@(Simulation gc@GraphicsContext{..} cc@ComputeContext{..} _ _ _ _ _) = do
   evts <- SDL.pollEvents
   let rdr  = graphicsRenderer
       win  = graphicsWindow
-      quit = or . flip fmap evts $ \(SDL.eventPayload -> e) -> evalState (simHandleEvent e) sim
+      quit = or . flip fmap evts $ \(SDL.eventPayload -> e) -> runReader (simHandleEvent e) sim
   unless quit $ do
     SDL.rendererDrawColor rdr $= SDL.V4 0 127 255 255
     SDL.clear rdr
-    sim' <- execStateT simRun sim
+    runReaderT simRun sim
     SDL.present rdr
-    run sim'
+    run sim
 
 main :: IO ()
 main = withGraphicsContext $ \gc -> do
