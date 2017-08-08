@@ -22,5 +22,6 @@ __kernel void step_board(__global int *board, int width, int height) {
     const int die = count < 2 || count > 3;
     const int reproduce = count == 3;
 
+    mem_fence(CLK_GLOBAL_MEM_FENCE);
     board[idx] = select(select(board[idx], 1, reproduce), 0, die);
 }
