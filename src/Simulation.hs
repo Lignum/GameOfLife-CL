@@ -48,11 +48,11 @@ rect x y w h = SDL.Rectangle (SDL.P $ SDL.V2 (f x) (f y)) $ SDL.V2 (f w) (f h) w
 randomCells :: Int -> Int -> IO (VS.Vector Bool)
 randomCells w h = VS.generateM (w * h) $ const randomIO
 
-simDefaultBoardWidth = 250
-simDefaultBoardHeight = 250
+simDefaultBoardWidth = 800
+simDefaultBoardHeight = 600
 
-simBoardCellWidth = 2
-simBoardCellHeight = 2
+simBoardCellWidth = 1
+simBoardCellHeight = 1
 
 simulation :: GraphicsContext -> ComputeContext -> IO Simulation
 simulation gc cc@ComputeContext{..} = do
@@ -96,9 +96,8 @@ simDrawCells w h = do
   bh  <- asks simBoardHeight
   simWithCells $ \cls ->
     flip V.imapM_ cls $ \i c -> let (x, y) = (i `mod` bw, i `div` bw)
-                                  in do if c then SDL.rendererDrawColor rdr $= SDL.V4 0 0 0 255
-                                             else SDL.rendererDrawColor rdr $= SDL.V4 255 255 255 255
-                                        SDL.fillRect rdr . Just $ rect (x * w) (y * h) w h
+                                  in when c $ do SDL.rendererDrawColor rdr $= SDL.V4 0 0 0 255
+                                                 SDL.fillRect rdr . Just $ rect (x * w) (y * h) w h
 
 simStep :: (MonadIO m, MonadReader Simulation m) => m ()
 simStep = do

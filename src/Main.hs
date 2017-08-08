@@ -24,7 +24,7 @@ run sim@(Simulation gc@GraphicsContext{..} cc@ComputeContext{..} _ _ _ _ _) = do
       win  = graphicsWindow
       quit = or . flip fmap evts $ \(SDL.eventPayload -> e) -> runReader (simHandleEvent e) sim
   unless quit $ do
-    SDL.rendererDrawColor rdr $= SDL.V4 0 127 255 255
+    SDL.rendererDrawColor rdr $= SDL.V4 255 255 255 255
     SDL.clear rdr
     runReaderT simRun sim
     SDL.present rdr
